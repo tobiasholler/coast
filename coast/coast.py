@@ -12,9 +12,8 @@ LOG_FORMAT = '[%(asctime)s] %(levelname)s: \t%(message)s'
 
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
-
 handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
+handler.setLevel(logging.NOTSET)
 formatter = logging.Formatter(LOG_FORMAT)
 handler.setFormatter(formatter)
 log.addHandler(handler)
@@ -23,11 +22,16 @@ parser = argparse.ArgumentParser(description="Coast Backup Tool")
 parser.add_argument("--backup-now", action="store_true")
 parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--config-check", action="store_true")
+parser.add_argument("--config-file", default="/etc/coast.yml")
 args = parser.parse_args()
 
-config_file = open("/etc/coast.yml", "r")
+log.info(f"Reading config file \"{args.config_file}\"")
+config_file = open(args.config_file, "r")
 config = yaml.load(config_file, Loader=yaml.FullLoader)
 config_file.close()
+
+# Setting Loglevel set in config file
+log.setLevel(config["log_level"] if "log_level" in config else log.setLevel(logging.DEBUG))
 
 # check config
 
@@ -35,7 +39,7 @@ base_backup_dir = config["base_backup_dir"] if "base_backup_dir" in config else 
 
 if args.backup_now:
   directories = config["directories"]
-  print(directories)
+  logging.info(f"Directories to back up: {list(directories.keys())}")
   for name in directories:
     directory = directories[name]
     handler.setFormatter(logging.Formatter(f"[%(asctime)s] %(levelname)s: \t({name})\t%(message)s"))
@@ -55,9 +59,23 @@ if args.backup_now:
     if "pre_backup_command" in directory:
       log.info(f"Calling pre backup command \"{directory['pre_backup_command']}\" in \"{source_dir}\"")
       d(lambda: os.system(f"cd {source_dir} && {directory['pre_backup_command']}"))
-    backup_command = ["tar", "-czvf", target_file, f"--listed-incremental={snapshot_file}", source_dir]
+    log.debug("Creating nessecary directories")
+    d(lambda: subprocess.call(["mkdir", "-p", backup_dir]))
+    backup_command = ["tar", "-czf", target_file, f"--listed-incremental={snapshot_file}", source_dir]
     log.info(f"Calling backup command \"{' '.join(backup_command)}\"")
     d(lambda: subprocess.call(backup_command))
     if "post_backup_command" in directory:
       log.info(f"Calling post backup command \"{directory['post_backup_command']}\" in \"{source_dir}\"")
       d(lambda: os.system(f"cd {source_dir} && {directory['post_backup_command']}"))
+    # encryption
+    if "encryption_password" in directory:
+      encryption_password = directory["encryption_password"]
+      target_file_enc = target_file + ".enc"
+      log.info(f"Encrypting \"{target_file}\" to \"{target_file_enc}\" with AES-256-cbc")
+      encryption_command = ["openssl", "enc", "-aes-256-cbc", "-in", target_file, "-k", str(encryption_password), "-md", "sha1", "-pbkdf2"]
+      log.debug(f"Encryption command: {encryption_command}")
+      f = open(target_file_enc, "wb")
+      process = subprocess.run(encryption_command, stdout=subprocess.PIPE)
+      f.write(process.stdout)
+      f.close()
+      log.info(f"Encryption finished")

@@ -1,10 +1,7 @@
 directories:
   cloud:
-    pre_backup_command: docker-compose down
-    post_backup_command: docker-compose up -d
-    source_dir: /opt/containers/cloud
-  vault:
-    pre_backup_command: docker-compose down
-    post_backup_command: docker-compose up -d
-    source_dir: /opt/containers/vault
-base_backup_dir: /opt/container_backups
+    pre_backup_command: touch running.txt
+    post_backup_command: rm running.txt
+    source_dir: /home/tobiasholler/Downloads
+base_backup_dir: /home/tobiasholler/coast_backups_test
+log_level: 0
