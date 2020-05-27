@@ -1,0 +1,10 @@
+directories:
+  cloud:
+    pre_backup_command: docker-compose down
+    post_backup_command: docker-compose up -d
+    source_dir: /opt/containers/cloud
+  vault:
+    pre_backup_command: docker-compose down
+    post_backup_command: docker-compose up -d
+    source_dir: /opt/containers/vault
+base_backup_dir: /opt/container_backups
