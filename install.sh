@@ -13,8 +13,8 @@ command -v docker || (>&2 echo "Docker must be installed for AWS Backup to work!
 docker pull amazon/aws-cli
 
 # Scripts
-cp coast /usr/lib/coast
 rm -rf /usr/lib/coast # remove old version
+cp coast /usr/lib/coast
 chmod +x /usr/lib/coast/coast.py
 ln /usr/lib/coast/coast /usr/bin/coast
 
