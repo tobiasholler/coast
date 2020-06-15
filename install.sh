@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 
+# check for root
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+# Checking requirements
+command -v docker || (>&2 echo "Docker must be installed for AWS Backup to work!"; exit 1)
+
+# Pulling AWS CLI
+docker pull amazon/aws-cli
+
 # Scripts
 cp coast /usr/lib/coast
-rm -r /usr/lib/coast # remove old version
+rm -rf /usr/lib/coast # remove old version
 chmod +x /usr/lib/coast/coast.py
 ln /usr/lib/coast/coast /usr/bin/coast
 
@@ -14,7 +26,12 @@ cp -n coast.yml /etc/coast.yml
 chown root:root /etc/coast.yml
 chmod 600 /etc/coast
 
+# Creating Log Folder
+mkdir -p /var/log/coast
+
 # Cron
 cp coast.cron /etc/cron.d/coast
 chmod +x /etc/cron.d/coast
 service cron reload
+
+echo "Coast installed.\nRun 'coast --aws-configure' to configure AWS."

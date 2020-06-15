@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from datetime import datetime
+from os import system
 
 import yaml
 import argparse
@@ -19,6 +20,7 @@ handler.setFormatter(formatter)
 log.addHandler(handler)
 
 parser = argparse.ArgumentParser(description="Coast Backup Tool")
+parser.add_argument("--aws-configure", action="store_true")
 parser.add_argument("--backup-now", action="store_true")
 parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--config-check", action="store_true")
@@ -37,6 +39,10 @@ log.setLevel(config["log_level"] if "log_level" in config else log.setLevel(logg
 
 base_backup_dir = config["base_backup_dir"] if "base_backup_dir" in config else "/opt/coast_backups/"
 
+if args.aws_configure:
+  print("Configureing AWS...")
+  system("docker run --rm -it -v /etc/aws:/root/.aws amazon/aws-cli configure")
+
 if args.backup_now:
   directories = config["directories"]
   logging.info(f"Directories to back up: {list(directories.keys())}")
@@ -53,7 +59,7 @@ if args.backup_now:
     snapshot_file = os.path.join(backup_dir, f"{name}_incremental_backup.tar.snapshot")
     def d(f):
       if not args.dry_run:
-        f()
+        return f()
       else:
         log.warning("Not called because of dry run!")
     if "pre_backup_command" in directory:
@@ -67,6 +73,7 @@ if args.backup_now:
     if "post_backup_command" in directory:
       log.info(f"Calling post backup command \"{directory['post_backup_command']}\" in \"{source_dir}\"")
       d(lambda: os.system(f"cd {source_dir} && {directory['post_backup_command']}"))
+    upload_file = target_file
     # encryption
     if "encryption_password" in directory:
       encryption_password = directory["encryption_password"]
@@ -74,8 +81,20 @@ if args.backup_now:
       log.info(f"Encrypting \"{target_file}\" to \"{target_file_enc}\" with AES-256-cbc")
       encryption_command = ["openssl", "enc", "-aes-256-cbc", "-in", target_file, "-k", str(encryption_password), "-md", "sha1", "-pbkdf2"]
       log.debug(f"Encryption command: {encryption_command}")
-      f = open(target_file_enc, "wb")
-      process = subprocess.run(encryption_command, stdout=subprocess.PIPE)
-      f.write(process.stdout)
-      f.close()
+      if not args.dry_run: f = open(target_file_enc, "wb")
+      process = d(lambda: subprocess.run(encryption_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+      if not args.dry_run: f.write(process.stdout)
+      if not args.dry_run: f.close()
+      if process != None and process.stderr != b"": print(process.stderr.decode("ascii"), file=sys.stderr)
+      upload_file = target_file_enc
       log.info(f"Encryption finished")
+    # glacier upload
+    if "glacier_vault" in directory:
+      log.info(f"Uploading '{upload_file}' to Amazon Glacier")
+      glacier_vault = directory["glacier_vault"]
+      upload_command = ["docker", "run", "--rm", "-it", "-v", "/etc/aws:/root/.aws", "-v", f"{upload_file}:/root/file", "amazon/aws-cli", "glacier", "upload-archive", "--vault-name", glacier_vault, "--account-id", "-", "--body", "~/file"]
+      log.debug(f"Upload command: {upload_command}")
+      process = d(lambda: subprocess.run(upload_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+      if process != None: print(process.stdout)
+      if process != None and process.stderr != b"": print(process.stderr.decode("ascii"), file=sys.stderr)
+      if process != None and process.stderr == b"": log.info(f"Uploading complete")
