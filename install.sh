@@ -14,9 +14,9 @@ docker pull amazon/aws-cli
 
 # Scripts
 rm -rf /usr/lib/coast # remove old version
-cp coast /usr/lib/coast
+cp -r coast /usr/lib/coast
 chmod +x /usr/lib/coast/coast.py
-ln /usr/lib/coast/coast /usr/bin/coast
+ln -s /usr/lib/coast/coast.py /usr/bin/coast
 
 # Requirements
 python3 -m pip install -r coast/requirements.txt
@@ -24,7 +24,7 @@ python3 -m pip install -r coast/requirements.txt
 # Config
 cp -n coast.yml /etc/coast.yml
 chown root:root /etc/coast.yml
-chmod 600 /etc/coast
+chmod 600 /etc/coast.yml
 
 # Creating Log Folder
 mkdir -p /var/log/coast
