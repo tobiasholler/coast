@@ -77,14 +77,12 @@ if args.backup_now:
     # encryption
     if "encryption_password" in directory:
       encryption_password = directory["encryption_password"]
-      target_file_enc = target_file + ".enc"
-      log.info(f"Encrypting \"{target_file}\" to \"{target_file_enc}\" with AES-256-cbc")
-      encryption_command = ["openssl", "enc", "-aes-256-cbc", "-in", target_file, "-k", str(encryption_password), "-md", "sha1", "-pbkdf2"]
-      log.debug(f"Encryption command: {encryption_command}")
-      if not args.dry_run: f = open(target_file_enc, "wb")
+      target_file_enc = target_file + ".gpg"
+      log.info(f"Encrypting \"{target_file}\" to \"{target_file_enc}\" with GnuPG and AES256")
+      encryption_command = ["gpg", "--batch", "--passphrase", str(encryption_password), "--symmetric", "--cipher-algo", "AES256", "--output", target_file_enc, target_file]
+      log.debug(f"Encryption command: {encryption_command}".replace(str(encryption_password), "THIS_IS_A_PERFECT_PASSWORD"))
       process = d(lambda: subprocess.run(encryption_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-      if not args.dry_run: f.write(process.stdout)
-      if not args.dry_run: f.close()
+      if process != None and process.stdout != b"": print(process.stdout.decode("ascii"), file=sys.stderr)
       if process != None and process.stderr != b"": print(process.stderr.decode("ascii"), file=sys.stderr)
       upload_file = target_file_enc
       log.info(f"Encryption finished")

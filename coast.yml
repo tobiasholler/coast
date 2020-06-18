@@ -3,7 +3,7 @@ directories:
     pre_backup_command: touch running.txt
     post_backup_command: rm running.txt
     source_dir: /home/tobiasholler/coast_backups_test_source
-    encryption_password: 12345789
-    glacier_vault: backup_test
+    encryption_password: 123456789
+    #glacier_vault: backup_test
 base_backup_dir: /home/tobiasholler/coast_backups_test
 log_level: 0
