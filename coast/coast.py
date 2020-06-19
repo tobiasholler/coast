@@ -82,8 +82,7 @@ if args.backup_now:
       encryption_command = ["gpg", "--batch", "--passphrase", str(encryption_password), "--symmetric", "--cipher-algo", "AES256", "--output", target_file_enc, target_file]
       log.debug(f"Encryption command: {encryption_command}".replace(str(encryption_password), "THIS_IS_A_PERFECT_PASSWORD"))
       process = d(lambda: subprocess.run(encryption_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-      if process != None and process.stdout != b"": print(process.stdout.decode("ascii"), file=sys.stderr)
-      if process != None and process.stderr != b"": print(process.stderr.decode("ascii"), file=sys.stderr)
+      if process != None and process.stdout != b"": log.error(f"GPG-Error: {process.stdout.decode('ascii')}")
       upload_file = target_file_enc
       log.info(f"Encryption finished")
     # glacier upload
