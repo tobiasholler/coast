@@ -93,6 +93,9 @@ if args.backup_now:
       upload_command = ["docker", "run", "--rm", "-it", "-v", "/etc/aws:/root/.aws", "-v", f"{upload_file}:/root/file", "amazon/aws-cli", "glacier", "upload-archive", "--vault-name", glacier_vault, "--account-id", "-", "--body", "~/file"]
       log.debug(f"Upload command: {upload_command}")
       process = d(lambda: subprocess.run(upload_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-      if process != None: print(process.stdout)
-      if process != None and process.stderr != b"": print(process.stderr.decode("ascii"), file=sys.stderr)
-      if process != None and process.stderr == b"": log.info(f"Uploading complete")
+      if process != None:
+        log.info(f"AWS-CLI Output: {process.stdout.decode('ascii')}")
+        if process.stderr != b"":
+          log.error(f"AWS-CLI Error: {process.stderr.decode('ascii')}")
+        else:
+          log.info(f"Uploading complete")
